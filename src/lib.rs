@@ -9,7 +9,14 @@ pub mod prelude {
     pub use super::error::ParseError;
     pub use super::combinator::{State, Map, And, Optional, Or, Many0, Many1, ManyN, Skip, TakeUntil};
     pub use super::matcher::{Any, Digit, Letter, One, OneOf, Seq, Whitespace};
-    
+    pub use super::util::{many0, many1, state, take_until, digit, letter, one_byte, one_char, byte_seq, str_seq, whitespace};
+}
+
+pub mod util {
+    use crate::parser::Parse;
+    use crate::combinator::*;
+    use crate::matcher::*;
+
     pub fn many0<'a, I, P>(p: P) -> Many0<P>
     where
         P: Parse<'a, I>
@@ -24,14 +31,6 @@ pub mod prelude {
         Many1::new(p)
     }
 
-    pub fn pbyte(b: u8) -> One<u8> {
-        One::<u8>::new(b)
-    }
-
-    pub fn pchar(ch: char) -> One<char> {
-        One::<char>::new(ch)
-    }
-
     pub fn state<F, T>(f: F) -> State<F>
     where
         F: Fn() -> T,
@@ -44,6 +43,30 @@ pub mod prelude {
         P: Parse<'a, I>
     {
         TakeUntil::new(p)
+    }
+    
+    pub fn digit() -> Digit {
+        Digit::new()
+    }
+
+    pub fn letter() -> Letter {
+        Letter::new()
+    }
+
+    pub fn one_byte(b: u8) -> One<u8> {
+        One::<u8>::new(b)
+    }
+
+    pub fn one_char(ch: char) -> One<char> {
+        One::<char>::new(ch)
+    }
+
+    pub fn byte_seq(s: &[u8]) -> Seq<u8> {
+        Seq::<u8>::new(s)
+    }
+
+    pub fn str_seq(s: &str) -> Seq<char> {
+        Seq::<char>::new(s)
     }
 
     pub fn whitespace() -> Whitespace {

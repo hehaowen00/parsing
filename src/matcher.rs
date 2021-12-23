@@ -128,7 +128,7 @@ pub struct Seq<T> {
 }
 
 impl Seq<char> {
-    pub fn str(s: &str) -> Self {
+    pub fn new(s: &str) -> Self {
         Self {
             seq: s.chars().collect(),
         }
@@ -136,7 +136,7 @@ impl Seq<char> {
 }
 
 impl Seq<u8> {
-    pub fn bytes(s: &[u8]) -> Self {
+    pub fn new(s: &[u8]) -> Self {
         Self {
             seq: s.to_vec()
         }
