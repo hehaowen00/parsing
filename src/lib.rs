@@ -1,3 +1,4 @@
+#![feature(generic_associated_types)]
 pub mod error;
 pub mod combinator;
 pub mod matcher;
@@ -17,16 +18,16 @@ pub mod util {
     use crate::combinator::*;
     use crate::matcher::*;
 
-    pub fn many0<'a, I, P>(p: P) -> Many0<P>
+    pub fn many0<I, P>(p: P) -> Many0<P>
     where
-        P: Parse<'a, I>
+        P: Parse<I>
     {
         Many0::new(p)
     }
 
-    pub fn many1<'a, I, P>(p: P) -> Many1<P>
+    pub fn many1<I, P>(p: P) -> Many1<P>
     where
-        P: Parse<'a, I>
+        P: Parse<I>
     {
         Many1::new(p)
     }
@@ -38,9 +39,9 @@ pub mod util {
         State::new(f)
     }
     
-    pub fn take_until<'a, I, P>(p: P) -> TakeUntil<P>
+    pub fn take_until<I, P>(p: P) -> TakeUntil<P>
     where
-        P: Parse<'a, I>
+        P: Parse<I>
     {
         TakeUntil::new(p)
     }

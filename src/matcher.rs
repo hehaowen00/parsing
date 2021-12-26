@@ -9,10 +9,10 @@ impl Any {
     }
 }
 
-impl<'a, T: 'a> Parse<'a, T> for Any {
-    type Output = &'a T;
+impl<T> Parse<T> for Any {
+    type Output<'o> = &'o T;
 
-    fn parse(&self, input: &'a [T]) -> Result<(Self::Output, &'a [T]), ParseError> {
+    fn parse<'a>(&self, input: &'a [T]) -> Result<(Self::Output<'a>, &'a [T]), ParseError> {
         match input.len() {
             0 => Err(ParseError::EOF),
             _ => Ok((&input[0], &input[1..])),
@@ -28,10 +28,10 @@ impl Digit {
     }
 }
 
-impl<'a> Parse<'a, char> for Digit {
+impl Parse<char> for Digit {
     type Output = char;
 
-    fn parse(&self, input: &'a [char]) -> Result<(Self::Output, &'a [char]), ParseError> {
+    fn parse<'a>(&self, input: &'a [char]) -> Result<(Self::Output<'a>, &'a [char]), ParseError> {
         match input.len() {
             0 => Err(ParseError::Indeterminate),
             _ => match input[0].is_numeric() {
@@ -50,10 +50,10 @@ impl Letter {
     }
 }
 
-impl<'a> Parse<'a, char> for Letter {
+impl Parse< char> for Letter {
     type Output = char;
 
-    fn parse(&self, input: &'a [char]) -> Result<(Self::Output, &'a [char]), ParseError> {
+    fn parse<'a>(&self, input: &'a [char]) -> Result<(Self::Output<'a>, &'a [char]), ParseError> {
         match input.len() {
             0 => Err(ParseError::Indeterminate),
             _ => match input[0].is_alphabetic() {
@@ -84,13 +84,10 @@ impl One<u8> {
     }
 }
 
-impl<'a, T> Parse<'a, T> for One<T>
-where
-    T: Clone + Eq + 'a
-{
-    type Output = &'a T;
+impl<T> Parse<T> for One<T> {
+    type Output<'o> = &'o T;
 
-    fn parse(&self, input: &'a [T]) -> Result<(Self::Output, &'a [T]), ParseError> {
+    fn parse<'a>(&self, input: &'a [T]) -> Result<(Self::Output<'a>, &'a [T]), ParseError> {
         match input.len() {
             0 => Err(ParseError::EOF),
             _ => match input[0] == self.val {
@@ -113,10 +110,10 @@ impl OneOf<char> {
     }
 }
 
-impl<'a> Parse<'a, char> for OneOf<char> {
+impl Parse<char> for OneOf<char> {
     type Output = char;
 
-    fn parse(&self, input: &'a [char]) -> Result<(Self::Output, &'a [char]), ParseError> {
+    fn parse<'a>(&self, input: &'a [char]) -> Result<(Self::Output<'a>, &'a [char]), ParseError> {
         match self.xs.contains(&input[0]) {
             true => Ok((input[0], &input[1..])),
             false => Err(ParseError::Invalid)
@@ -143,13 +140,10 @@ impl Seq<u8> {
     }
 }
 
-impl<'a, T> Parse<'a, T> for Seq<T>
-where
-    T: Clone + Eq + 'a,
-{
-    type Output = &'a [T];
+impl<T> Parse<T> for Seq<T> {
+    type Output<'o> = &'o [T];
 
-    fn parse(&self, input: &'a [T]) -> Result<(Self::Output, &'a [T]), ParseError> {
+    fn parse<'a>(&self, input: &'a [T]) -> Result<(Self::Output<'a>, &'a [T]), ParseError> {
         let len = self.seq.len();
         match input.len() >= len {
             true => {
@@ -177,10 +171,10 @@ impl Whitespace {
     }
 }
 
-impl<'a> Parse<'a, char> for Whitespace {
+impl Parse<char> for Whitespace {
     type Output = char;
 
-    fn parse(&self, input: &'a [char]) -> Result<(Self::Output, &'a [char]), ParseError> {
+    fn parse<'a>(&self, input: &'a [char]) -> Result<(Self::Output<'a>, &'a [char]), ParseError> {
         match input.len() {
             0 => {
                 return Err(ParseError::EOF);

@@ -14,14 +14,14 @@ impl<F> State<F> {
     }
 }
 
-impl<'a, F, T, I> Parse<'a, I> for State<F>
+impl<F, T, I> Parse<I> for State<F>
 where
     F: Fn() -> T + Clone,
 {
     type Output = T;
 
     #[inline]
-    fn parse(&self, input: &'a [I]) -> Result<(Self::Output, &'a [I]), ParseError> {
+    fn parse<'a>(&self, input: &'a [I]) -> Result<(Self::Output<'a>, &'a [I]), ParseError> {
         let state = (self.init)();
         Ok((state, input))
     }
@@ -41,14 +41,14 @@ impl<P, F> Map<P, F> {
     }
 }
 
-impl<'a, I, P, F, A, B> Parse<'a, I> for Map<P, F>
+impl<'o, I, P, F, A, B> Parse<I> for Map<P, F>
 where
     F: Fn(A) -> B,
-    P: Parse<'a, I, Output = A>,
+    P: Parse<I, Output<'o> = A>,
 {
     type Output = B;
 
-    fn parse(&self, input: &'a [I]) -> Result<(Self::Output, &'a [I]), ParseError> {
+    fn parse<'a>(&self, input: &'a [I]) -> Result<(Self::Output<'a>, &'a [I]), ParseError> {
         self.p.parse(input).map(|(res, input)| {
             let b = (self.f)(res);
             (b, input)
@@ -69,13 +69,13 @@ impl<P> Many0<P> {
     }
 }
 
-impl<'a, I, P> Parse<'a, I> for Many0<P>
+impl<I, P> Parse<I> for Many0<P>
 where
-    P: Parse<'a, I>,
+    P: Parse<I>,
 {
-    type Output = Vec<P::Output>;
+    type Output<'o> = Vec<P::Output<'o>>;
 
-    fn parse(&self, input: &'a [I]) -> Result<(Self::Output, &'a [I]), ParseError> {
+    fn parse<'a>(&self, input: &'a [I]) -> Result<(Self::Output<'a>, &'a [I]), ParseError> {
         let mut acc = Vec::new();
         let mut cursor = input;
 
@@ -101,14 +101,13 @@ impl<P> Many1<P> {
     }
 }
 
-impl<'a, I, P> Parse<'a, I> for Many1<P> 
+impl<I, P> Parse<I> for Many1<P> 
 where
-    I: 'a,
-    P: Parse<'a, I>,
+    P: Parse<I>,
 {
-    type Output = Vec<P::Output>;
+    type Output<'o> = Vec<P::Output<'o>>;
 
-    fn parse(&self, input: &'a [I]) -> Result<(Self::Output, &'a [I]), ParseError> {
+    fn parse<'a>(&self, input: &'a [I]) -> Result<(Self::Output<'a>, &'a [I]), ParseError> {
         match input.len() {
             0 => Err(ParseError::Indeterminate),
             _ => {
@@ -145,13 +144,13 @@ impl<P> ManyN<P> {
     }
 }
 
-impl<'a, I, P> Parse<'a, I> for ManyN<P>
+impl<I, P> Parse<I> for ManyN<P>
 where
-    P: Parse<'a, I>
+    P: Parse<I>
 {
-    type Output = Vec<P::Output>;
+    type Output<'o> = Vec<P::Output<'o>>;
 
-    fn parse(&self, input: &'a [I]) -> Result<(Self::Output, &'a [I]), ParseError> {
+    fn parse<'a>(&self, input: &'a [I]) -> Result<(Self::Output<'a>, &'a [I]), ParseError> {
         let mut acc = Vec::with_capacity(self.n);
         let mut cursor = input;
 
@@ -177,13 +176,13 @@ impl<P> Optional<P> {
     }
 }
 
-impl<'a, I, P> Parse<'a, I> for Optional<P>
+impl<I, P> Parse<I> for Optional<P>
 where
-    P: Parse<'a, I>
+    P: Parse<I>
 {
-    type Output = Option<P::Output>;
+    type Output<'o> = Option<P::Output<'o>>;
 
-    fn parse(&self, input: &'a [I]) -> Result<(Self::Output, &'a [I]), ParseError> {
+    fn parse<'a>(&self, input: &'a [I]) -> Result<(Self::Output<'a>, &'a [I]), ParseError> {
         match self.p.parse(input) {
             Ok((output, input)) => Ok((Some(output), input)),
             Err(_) => Ok((None, input)),
@@ -205,20 +204,21 @@ impl<P1, P2> And<P1, P2> {
     }
 }
 
-impl<'a, I, P1, P2> Parse<'a, I> for And<P1, P2>
+impl<I, P1, P2> Parse<I> for And<P1, P2>
 where
-    P1: Parse<'a, I>,
-    P2: Parse<'a, I>,
+    P1: Parse<I>,
+    P2: Parse<I>,
 {
-    type Output = (P1::Output, P2::Output);
+    type Output<'o> = (P1::Output<'o>, P2::Output<'o>);
 
-    fn parse(&self, input: &'a [I]) -> Result<(Self::Output, &'a [I]), ParseError> {
+    fn parse<'a>(&self, input: &'a [I]) -> Result<(Self::Output<'a>, &'a [I]), ParseError> {
         let (r1, input) = self.p1.parse(input)?;
         let (r2, input) = self.p2.parse(input)?;
         Ok(((r1, r2), input))
     }
 }
 
+/*
 pub struct Or<P1, P2> {
     p1: P1,
     p2: P2,
@@ -253,20 +253,21 @@ where
 }
 */
 
-impl<'a, I, O, P1, P2> Parse<'a, I> for Or<P1, P2>
+impl<'o, I, O, P1, P2> Parse<I> for Or<P1, P2>
 where
-    P1: Parse<'a, I, Output = O>,
-    P2: Parse<'a, I, Output = O>,
+    P1: Parse<I, Output<'o> = O>,
+    P2: Parse<I, Output<'o> = O>,
 {
     type Output = O;
 
-    fn parse(&self, input: &'a [I]) -> Result<(Self::Output, &'a [I]), ParseError> {
+    fn parse<'a>(&self, input: &'a [I]) -> Result<(Self::Output<'a>, &'a [I]), ParseError> {
         match self.p1.parse(input) {
             Ok((r1, input)) => Ok((r1, input)),
             Err(_) => self.p2.parse(input),
         }
     }
 }
+*/
 
 pub struct Skip<S: SkipDirection, P1, P2> {
     p1: P1,
@@ -294,27 +295,27 @@ impl<P1, P2> Skip<Right, P1, P2> {
     }
 }
 
-impl<'a, I, P1, P2> Parse<'a, I> for Skip<Left, P1, P2>
+impl<I, P1, P2> Parse<I> for Skip<Left, P1, P2>
 where
-    P1: Parse<'a, I>,
-    P2: Parse<'a, I>,
+    P1: Parse<I>,
+    P2: Parse<I>,
 {
-    type Output = P2::Output;
+    type Output<'o> = P2::Output<'o>;
 
-    fn parse(&self, input: &'a [I]) -> Result<(Self::Output, &'a [I]), ParseError> {
+    fn parse<'a>(&self, input: &'a [I]) -> Result<(Self::Output<'a>, &'a [I]), ParseError> {
         let (_, input) = self.p1.parse(input)?;
         self.p2.parse(input)
     }
 }
 
-impl<'a, I, P1, P2> Parse<'a, I> for Skip<Right, P1, P2>
+impl<I, P1, P2> Parse<I> for Skip<Right, P1, P2>
 where
-    P1: Parse<'a, I>,
-    P2: Parse<'a, I>,
+    P1: Parse<I>,
+    P2: Parse<I>,
 {
-    type Output = P1::Output;
+    type Output<'o> = P1::Output<'o>;
 
-    fn parse(&self, input: &'a [I]) -> Result<(Self::Output, &'a [I]), ParseError> {
+    fn parse<'a>(&self, input: &'a [I]) -> Result<(Self::Output<'a>, &'a [I]), ParseError> {
         let (output, input) = self.p1.parse(input)?;
         let (_, input) = self.p2.parse(input)?;
         Ok((output, input))
@@ -346,14 +347,13 @@ impl<P> TakeUntil<P> {
     }
 }
 
-impl<'a, I, P> Parse<'a, I> for TakeUntil<P>
+impl<I, P> Parse<I> for TakeUntil<P>
 where
-    P: Parse<'a, I>,
-    I: 'a,
+    P: Parse<I>,
 {
-    type Output = &'a [I];
+    type Output<'o> = &'o [I];
 
-    fn parse(&self, input: &'a [I]) -> Result<(Self::Output, &'a [I]), ParseError> {
+    fn parse<'a>(&self, input: &'a [I]) -> Result<(Self::Output<'a>, &'a [I]), ParseError> {
         if input.len() == 0 {
             return Err(ParseError::EOF);
         }
@@ -370,4 +370,3 @@ where
         Ok((&input[..idx], &input[idx..]))
     }
 }
-
