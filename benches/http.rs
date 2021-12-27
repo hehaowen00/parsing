@@ -5,30 +5,30 @@ type Request<'a> = (&'a [char], &'a [char], &'a [char]);
 type Headers<'a> = Vec<(&'a [char], &'a [char])>;
 
 fn http_parser<'a>() -> impl Parse<'a, char, Output = (Request<'a>, Headers<'a>)> {
-    let method = pstr("GET")
-        .or(pstr("POST"))
-        .or(pstr("PUT"))
-        .or(pstr("DELETE"))
-        .or(pstr("HEAD"))
-        .or(pstr("CONNECT"))
-        .or(pstr("OPTIONS"))
-        .or(pstr("TRACE"))
-        .or(pstr("PATCH"));
+    let method = str_seq("GET")
+        .or(str_seq("POST"))
+        .or(str_seq("PUT"))
+        .or(str_seq("DELETE"))
+        .or(str_seq("HEAD"))
+        .or(str_seq("CONNECT"))
+        .or(str_seq("OPTIONS"))
+        .or(str_seq("TRACE"))
+        .or(str_seq("PATCH"));
 
-    let req = method.skip_right(pchar(' '))
-        .then(take_until(pchar(' ')))
-        .skip_right(pchar(' '))
-        .then(take_until(pstr("\r\n")))
-        .skip_right(pstr("\r\n"))
+    let req = method.skip_right(one_char(' '))
+        .then(take_until(one_char(' ')))
+        .skip_right(one_char(' '))
+        .then(take_until(str_seq("\r\n")))
+        .skip_right(str_seq("\r\n"))
         .map(|((a, b), c)| (a, b, c));
 
-    let header = take_until(pchar(':'))
-        .skip_right(pchar(':'))
+    let header = take_until(one_char(':'))
+        .skip_right(one_char(':'))
         .skip_right(whitespace())
-        .then(take_until(pstr("\r\n")))
-        .skip_right(pstr("\r\n"));
+        .then(take_until(str_seq("\r\n")))
+        .skip_right(str_seq("\r\n"));
 
-    req.then(many1(header)).skip_right(pstr("\r\n"))
+    req.then(many1(header)).skip_right(str_seq("\r\n"))
 }
 
 fn bench_fn(c: &mut Criterion) {
