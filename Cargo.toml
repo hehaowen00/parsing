@@ -8,7 +8,11 @@ edition = "2021"
 criterion = "0.3"
 
 [[bench]]
-name = "http"
+name = "single"
+harness = false
+
+[[bench]]
+name = "large"
 harness = false
 
 [dependencies]

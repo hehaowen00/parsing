@@ -3,7 +3,7 @@ use crate::error::ParseError;
 use std::marker::PhantomData;
 
 pub struct State<F> {
-    init: F,
+    pub(crate) init: F,
 }
 
 impl<F> State<F> {
@@ -14,22 +14,9 @@ impl<F> State<F> {
     }
 }
 
-impl<F, T, I> Parse<I> for State<F>
-where
-    F: Fn() -> T + Clone,
-{
-    type Output = T;
-
-    #[inline]
-    fn parse<'a>(&self, input: &'a [I]) -> Result<(Self::Output<'a>, &'a [I]), ParseError> {
-        let state = (self.init)();
-        Ok((state, input))
-    }
-}
-
 pub struct Map<P, F> {
-    p: P,
-    f: F,
+    pub(crate) p: P,
+    pub(crate) f: F,
 }
 
 impl<P, F> Map<P, F> {
@@ -41,24 +28,9 @@ impl<P, F> Map<P, F> {
     }
 }
 
-impl<'o, I, P, F, A, B> Parse<I> for Map<P, F>
-where
-    F: Fn(A) -> B,
-    P: Parse<I, Output<'o> = A>,
-{
-    type Output = B;
-
-    fn parse<'a>(&self, input: &'a [I]) -> Result<(Self::Output<'a>, &'a [I]), ParseError> {
-        self.p.parse(input).map(|(res, input)| {
-            let b = (self.f)(res);
-            (b, input)
-        })
-    }
-}
-
 // zero or more
 pub struct Many0<P> {
-    p: P
+    pub(crate) p: P
 }
 
 impl<P> Many0<P> {
@@ -69,28 +41,9 @@ impl<P> Many0<P> {
     }
 }
 
-impl<I, P> Parse<I> for Many0<P>
-where
-    P: Parse<I>,
-{
-    type Output<'o> = Vec<P::Output<'o>>;
-
-    fn parse<'a>(&self, input: &'a [I]) -> Result<(Self::Output<'a>, &'a [I]), ParseError> {
-        let mut acc = Vec::new();
-        let mut cursor = input;
-
-        while let Ok((res, input)) = self.p.parse(cursor) {
-            acc.push(res);
-            cursor = input;
-        }
-
-        Ok((acc, cursor))
-    }
-}
-
 // one or more
 pub struct Many1<P> {
-    p: P
+    pub(crate) p: P
 }
 
 impl<P> Many1<P> {
@@ -101,38 +54,11 @@ impl<P> Many1<P> {
     }
 }
 
-impl<I, P> Parse<I> for Many1<P> 
-where
-    P: Parse<I>,
-{
-    type Output<'o> = Vec<P::Output<'o>>;
-
-    fn parse<'a>(&self, input: &'a [I]) -> Result<(Self::Output<'a>, &'a [I]), ParseError> {
-        match input.len() {
-            0 => Err(ParseError::Indeterminate),
-            _ => {
-                let mut acc = Vec::new();
-                let mut cursor = input;
-
-                let (res, input) = self.p.parse(cursor)?;
-                acc.push(res);
-                cursor = input;
-
-                while let Ok((res, input)) = self.p.parse(cursor) {
-                    acc.push(res);
-                    cursor = input;
-                }
-
-                Ok((acc, cursor))
-            }
-        }
-    }
-}
 
 // n
 pub struct ManyN<P> {
-    n: usize,
-    p: P,
+    pub(crate) n: usize,
+    pub(crate) p: P,
 }
 
 impl<P> ManyN<P> {
@@ -141,26 +67,6 @@ impl<P> ManyN<P> {
             n,
             p,
         }
-    }
-}
-
-impl<I, P> Parse<I> for ManyN<P>
-where
-    P: Parse<I>
-{
-    type Output<'o> = Vec<P::Output<'o>>;
-
-    fn parse<'a>(&self, input: &'a [I]) -> Result<(Self::Output<'a>, &'a [I]), ParseError> {
-        let mut acc = Vec::with_capacity(self.n);
-        let mut cursor = input;
-
-        for _ in 0..self.n {
-            let (res, input) = self.p.parse(cursor)?;
-            cursor = input;
-            acc.push(res);
-        }
-
-        Ok((acc, cursor))
     }
 }
 
@@ -176,23 +82,9 @@ impl<P> Optional<P> {
     }
 }
 
-impl<I, P> Parse<I> for Optional<P>
-where
-    P: Parse<I>
-{
-    type Output<'o> = Option<P::Output<'o>>;
-
-    fn parse<'a>(&self, input: &'a [I]) -> Result<(Self::Output<'a>, &'a [I]), ParseError> {
-        match self.p.parse(input) {
-            Ok((output, input)) => Ok((Some(output), input)),
-            Err(_) => Ok((None, input)),
-        }
-    }
-}
-
 pub struct And<P1, P2> {
-    p1: P1,
-    p2: P2,
+    pub(crate) p1: P1,
+    pub(crate) p2: P2,
 }
 
 impl<P1, P2> And<P1, P2> {
@@ -204,24 +96,9 @@ impl<P1, P2> And<P1, P2> {
     }
 }
 
-impl<I, P1, P2> Parse<I> for And<P1, P2>
-where
-    P1: Parse<I>,
-    P2: Parse<I>,
-{
-    type Output<'o> = (P1::Output<'o>, P2::Output<'o>);
-
-    fn parse<'a>(&self, input: &'a [I]) -> Result<(Self::Output<'a>, &'a [I]), ParseError> {
-        let (r1, input) = self.p1.parse(input)?;
-        let (r2, input) = self.p2.parse(input)?;
-        Ok(((r1, r2), input))
-    }
-}
-
-/*
 pub struct Or<P1, P2> {
-    p1: P1,
-    p2: P2,
+    pub(crate) p1: P1,
+    pub(crate) p2: P2,
 }
 
 impl<P1, P2> Or<P1, P2> {
@@ -234,25 +111,6 @@ impl<P1, P2> Or<P1, P2> {
 }
 
 /*
-impl<'a, I, A, B, P1, P2> Parse<'a, I> for Or<P1, P2>
-where
-    P1: Parse<'a, I, Output = A>,
-    P2: Parse<'a, I, Output = B>,
-{
-    type Output = (Option<A>, Option<B>);
-
-    fn parse(&self, input: &'a [I]) -> Result<(Self::Output, &'a [I]), ParseError> {
-        match self.p1.parse(input) {
-            Ok((r1, input)) => Ok(((Some(r1), None), input)),
-            Err(_) => {
-                let (r2, input) = self.p2.parse(input)?;
-                Ok(((None, Some(r2)), input))
-            }
-        }
-    }
-}
-*/
-
 impl<'o, I, O, P1, P2> Parse<I> for Or<P1, P2>
 where
     P1: Parse<I, Output<'o> = O>,
@@ -270,9 +128,9 @@ where
 */
 
 pub struct Skip<S: SkipDirection, P1, P2> {
-    p1: P1,
-    p2: P2,
-    marker: PhantomData<S>
+    pub(crate) p1: P1,
+    pub(crate) p2: P2,
+    _phantom: PhantomData<S>
 }
 
 impl<P1, P2> Skip<Left, P1, P2> {
@@ -280,7 +138,7 @@ impl<P1, P2> Skip<Left, P1, P2> {
         Self {
             p1,
             p2,
-            marker: PhantomData,
+            _phantom: PhantomData,
         }
     }
 }
@@ -290,35 +148,8 @@ impl<P1, P2> Skip<Right, P1, P2> {
         Self {
             p1,
             p2,
-            marker: PhantomData,
+            _phantom: PhantomData,
         }
-    }
-}
-
-impl<I, P1, P2> Parse<I> for Skip<Left, P1, P2>
-where
-    P1: Parse<I>,
-    P2: Parse<I>,
-{
-    type Output<'o> = P2::Output<'o>;
-
-    fn parse<'a>(&self, input: &'a [I]) -> Result<(Self::Output<'a>, &'a [I]), ParseError> {
-        let (_, input) = self.p1.parse(input)?;
-        self.p2.parse(input)
-    }
-}
-
-impl<I, P1, P2> Parse<I> for Skip<Right, P1, P2>
-where
-    P1: Parse<I>,
-    P2: Parse<I>,
-{
-    type Output<'o> = P1::Output<'o>;
-
-    fn parse<'a>(&self, input: &'a [I]) -> Result<(Self::Output<'a>, &'a [I]), ParseError> {
-        let (output, input) = self.p1.parse(input)?;
-        let (_, input) = self.p2.parse(input)?;
-        Ok((output, input))
     }
 }
 
@@ -335,8 +166,22 @@ pub struct Right;
 impl SkipDirection for Right {
 }
 
+pub struct SkipN<P> {
+    pub(crate) p: P,
+    pub(crate) n: usize,
+}
+
+impl<P> SkipN<P> {
+    pub fn new(p: P, n: usize) -> Self {
+        Self {
+            p,
+            n
+        }
+    }
+}
+
 pub struct TakeUntil<P> {
-    p: P
+    pub(crate) p: P
 }
 
 impl<P> TakeUntil<P> {
@@ -347,26 +192,14 @@ impl<P> TakeUntil<P> {
     }
 }
 
-impl<I, P> Parse<I> for TakeUntil<P>
-where
-    P: Parse<I>,
-{
-    type Output<'o> = &'o [I];
+pub struct TakeWhile<F> {
+    pub(crate) f: F,
+}
 
-    fn parse<'a>(&self, input: &'a [I]) -> Result<(Self::Output<'a>, &'a [I]), ParseError> {
-        if input.len() == 0 {
-            return Err(ParseError::EOF);
+impl<F> TakeWhile<F> {
+    pub fn new(f: F) -> Self {
+        Self {
+            f
         }
-
-        let mut idx = 0;
-
-        while let Err(_) = self.p.parse(&input[idx..]) {
-            idx += 1;
-            if idx >= input.len() {
-                return Ok((&input[..idx], &input[idx..]));
-            }
-        }
-
-        Ok((&input[..idx], &input[idx..]))
     }
 }

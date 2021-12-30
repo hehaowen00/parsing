@@ -1,22 +1,8 @@
-use crate::error::ParseError;
-use crate::parser::Parse;
-
 pub struct Any;
 
 impl Any {
     pub fn new() -> Self {
         Self {}
-    }
-}
-
-impl<T> Parse<T> for Any {
-    type Output<'o> = &'o T;
-
-    fn parse<'a>(&self, input: &'a [T]) -> Result<(Self::Output<'a>, &'a [T]), ParseError> {
-        match input.len() {
-            0 => Err(ParseError::EOF),
-            _ => Ok((&input[0], &input[1..])),
-        }
     }
 }
 
@@ -28,20 +14,6 @@ impl Digit {
     }
 }
 
-impl Parse<char> for Digit {
-    type Output = char;
-
-    fn parse<'a>(&self, input: &'a [char]) -> Result<(Self::Output<'a>, &'a [char]), ParseError> {
-        match input.len() {
-            0 => Err(ParseError::Indeterminate),
-            _ => match input[0].is_numeric() {
-                true => Ok((input[0], &input[1..])),
-                false => Err(ParseError::Invalid)
-            }
-        }
-    }
-}
-
 pub struct Letter;
 
 impl Letter {
@@ -50,84 +22,59 @@ impl Letter {
     }
 }
 
-impl Parse< char> for Letter {
-    type Output = char;
-
-    fn parse<'a>(&self, input: &'a [char]) -> Result<(Self::Output<'a>, &'a [char]), ParseError> {
-        match input.len() {
-            0 => Err(ParseError::Indeterminate),
-            _ => match input[0].is_alphabetic() {
-                true => Ok((input[0], &input[1..])),
-                false => Err(ParseError::Invalid)
-            }
-        }
-    }
-}
-
 pub struct One<T> {
-    val: T
-}
-
-impl One<char> {
-    pub fn new(ch: char) -> Self {
-        Self {
-            val: ch,
-        }
-    }
+    pub(crate) len: usize,
+    pub(crate) val: T,
 }
 
 impl One<u8> {
     pub fn new(byte: u8) -> Self {
         Self {
+            len: 0,
             val: byte,
         }
     }
 }
 
-impl<T> Parse<T> for One<T> {
-    type Output<'o> = &'o T;
-
-    fn parse<'a>(&self, input: &'a [T]) -> Result<(Self::Output<'a>, &'a [T]), ParseError> {
-        match input.len() {
-            0 => Err(ParseError::EOF),
-            _ => match input[0] == self.val {
-                true => Ok((&input[0], &input[1..])),
-                false => Err(ParseError::Invalid),
-            }
-        }
-    }
+pub struct OneOf<T> {
+    pub(crate) xs: Vec<T>,
 }
 
-pub struct OneOf<T> {
-    xs: Vec<T>,
+impl OneOf<String> {
+    pub fn from<'a>(xs: &[&'a str]) -> Self {
+        Self {
+            xs: xs.iter().map(|s| s.to_string()).collect(),
+        }
+    }
 }
 
 impl OneOf<char> {
-    pub fn from(s: &str) -> Self {
-        Self {
-            xs: s.chars().collect()
+    pub fn from(s: &str) -> OneOf<[u8; 4]> {
+        let mut xs = Vec::new();
+        for ch in s.chars() {
+            let mut buf = [0u8; 4];
+            ch.encode_utf8(&mut buf);
+            xs.push(buf);
+        }
+
+        OneOf {
+            xs
         }
     }
 }
 
-impl Parse<char> for OneOf<char> {
-    type Output = char;
-
-    fn parse<'a>(&self, input: &'a [char]) -> Result<(Self::Output<'a>, &'a [char]), ParseError> {
-        match self.xs.contains(&input[0]) {
-            true => Ok((input[0], &input[1..])),
-            false => Err(ParseError::Invalid)
-        }
-    }
-}
 pub struct Seq<T> {
-    seq: Vec<T>,
+    pub(crate) len: usize,
+    pub(crate) seq: Vec<T>,
 }
 
 impl Seq<char> {
-    pub fn new(s: &str) -> Self {
-        Self {
-            seq: s.chars().collect(),
+    pub fn new(s: &str) -> Seq<u8> {
+        let chars: Vec<_> = s.chars().collect();
+        let len = chars.len();
+        Seq {
+            seq: s.as_bytes().to_vec(),
+            len
         }
     }
 }
@@ -135,29 +82,8 @@ impl Seq<char> {
 impl Seq<u8> {
     pub fn new(s: &[u8]) -> Self {
         Self {
-            seq: s.to_vec()
-        }
-    }
-}
-
-impl<T> Parse<T> for Seq<T> {
-    type Output<'o> = &'o [T];
-
-    fn parse<'a>(&self, input: &'a [T]) -> Result<(Self::Output<'a>, &'a [T]), ParseError> {
-        let len = self.seq.len();
-        match input.len() >= len {
-            true => {
-                for i in 0..len {
-                    if self.seq[i] != input[i] {
-                        return Err(ParseError::Invalid);
-                    }
-                }
-
-                Ok((&input[0..len], &input[len..]))
-            },
-            false => {
-                Err(ParseError::Indeterminate)
-            }
+            seq: s.to_vec(),
+            len: s.len(),
         }
     }
 }
@@ -168,24 +94,5 @@ impl Whitespace {
     pub fn new() -> Self {
         Self {
         }
-    }
-}
-
-impl Parse<char> for Whitespace {
-    type Output = char;
-
-    fn parse<'a>(&self, input: &'a [char]) -> Result<(Self::Output<'a>, &'a [char]), ParseError> {
-        match input.len() {
-            0 => {
-                return Err(ParseError::EOF);
-            }
-            _ => {
-                if input[0].is_whitespace() {
-                    return Ok((input[0], &input[1..]));
-                }
-            }
-        }
-
-        Err(ParseError::Invalid)
     }
 }

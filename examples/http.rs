@@ -1,9 +1,10 @@
 use parsing::prelude::*;
+use parsing::str::*;
 
-type Request<'a> = (&'a [char], &'a [char], &'a [char]);
-type Headers<'a> = Vec<(&'a [char], &'a [char])>;
+type Request<'a> = (&'a str, &'a str, &'a str);
+type Headers<'a> = Vec<(&'a str, &'a str)>;
 
-fn http_parser<'a>() -> impl Parse<'a, char, Output = (Request<'a>, Headers<'a>)> {
+fn http_parser<'a>() -> impl ParseStr<'a, Output = (Request<'a>, Headers<'a>)> {
     let method = str_seq("GET")
         .or(str_seq("POST"))
         .or(str_seq("PUT"))
@@ -36,9 +37,8 @@ fn main() {
         Accept-Language: en-us\r\n\
         Accept-Encoding: gzip, deflate\r\n\
         Connection: Keep-Alive\r\n\r\n";
-    let chars: Vec<_> = message.chars().collect();
 
     let parser = http_parser();
-    let res = parser.parse(&chars).unwrap();
+    let res = parser.parse(&message).unwrap();
     println!("{:?}", res);
 }
